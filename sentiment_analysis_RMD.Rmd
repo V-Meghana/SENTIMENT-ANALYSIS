@@ -1,0 +1,904 @@
+---
+title: "Sentiment Analysis using Machine Learning in R"
+author: "Meghana RV"
+date: "26/12/2021"
+output: 
+  pdf_document: 
+    toc: yes
+    highlight: kate
+---
+
+\newpage
+
+# 1 Abstract
+
+This project is the final project, part of the HarvardX : PH125.9x Data Science : Capstone course. In this project, we train a machine learning algorithm to perform Sentiment Analysis, to decide whether we can or cannot recommend a chosen product from Amazon to a new customer. Sentiment Analysis is used to gauge the 'sentiment' or 'emotion' that is felt by a person with regard to a certain entity. These 'entities' include, but are not restricted to products from online shopping websites, public tweets, views on politics, other opinions, etc. 'Sentiment' can be positive, negative or neutral. Here, we choose a product from Amazon and attempt to measure the sentiment associated with it. If the proportion of positive sentiment is a lot larger than negative sentiment, we can say that it is has good reviews and is a reliable product. It can thus be recommended to a new customer who is interested in purchasing it. Similarly, if the proportion of negative sentiment is too high (too many bad reviews) then we don't recommend it.
+
+The data for this project was obtained from Kaggle in the form of a csv file. It contains 5000 reviews of various products, (about 25) , that were posted by Amazon-customers, on Amazon. Two main approaches were implemented to perform Sentiment Analysis : Rule or Lexicon based Approach and the Naive Bayes Approach. The accuracy of both models is calculated. In the end we decide whether the selected product can or cannot be recommended.
+
+\newpage
+
+# 2 Introduction
+
+Classification algorithms in machine learning use input training data to predict the likelihood that subsequent data will fall into one of the predetermined categories. One of the most common uses of classification is filtering emails into "spam" or "non-spam." In short, classification is a form of "pattern recognition," with classification algorithms applied to the training data to find the same pattern (similar words or sentiments, number sequences, etc.) in future sets of data.
+
+Sentiment analysis is a machine learning tool that analyzes texts for polarity, from positive to negative. By training machine learning tools with examples of emotions in text, machines automatically learn how to detect sentiment without human input. Sentiment analysis is predominantly a classification algorithm, aimed at finding an opinionated point of view and its disposition and highlighting the information of particular interest in the process.
+
+![](images/image1-01.jpeg){width="650"}
+
+There are roughly three algorithm models for sentiment analysis :
+
+1.  **Rule or Lexicon Based Approach :**
+
+    This approach relies on manually crafted rules for data classification to determine sentiment. This approach use dictionaries of words with positive or negative values to denote their polarity and sentiment strength to calculate a score. Additional functionality can also be added by including expressions. Rule based sentiment analysis algorithms can be customized based on context by developing even smarter rules.
+
+2.  **Automated or Machine Learning approach :**
+
+    Instead of clearly defined rules, this sentiment analysis model uses machine learning to figure out the essence of the statement. This ensures that the exactitude of the analysis improves and information can be processed on many criteria without it being too complicated. This approach involves the use of machine learning algorithms under supervision. An algorithm is trained with many sample passages until it can predict with accuracy the sentiment of the text. Then large pieces of text are fed into the classifier and it predicts the sentiment as negative, neutral or positive.
+
+    *Machine learning models can be of two kinds :*
+
+    **i.Traditional Models :** This method requires the gathering of a dataset with examples for positive, negative, and neutral classes, then processing this data, and finally training the algorithm based on the examples. These methods are mainly used for determining the polarity of text.
+
+    Traditional machine learning methods such as Naive Bayes, Logistic Regression and Support Vector Machines (SVM) are widely used for large-scale sentiment analysis because they are capable of scalability.
+
+    **ii.Deep Learning Models :** This provides more precise results than traditional models and includes neural network models such as CNN (Convoluted Neural Network), RNN (Recurrent Neural Network), and DNN (Deep Neural Network).
+
+    The main models used for sentiment analysis classification algorithms are Naive Bayes and Deep Learning.
+
+3.  **Hybrid Approach :**
+
+    Hybrid sentiment analysis models are the most modern, efficient, and widely-used approach for sentiment analysis. Provided you have well-designed hybrid systems, you can actually get the benefits of both automatic and rule-based systems. Hybrid models can offer the power of machine learning coupled with the flexibility of customization.
+
+The choice of the approach used would vary depending on the application.
+
+\newpage
+
+# 3 Methods / Analysis of the Data
+
+We initially start off with a csv file called '5000 REVIEWS'. As mentioned before, this file contains 5000 reviews from various customers, about various products.
+
+It was found that the product with second highest number of reviews (590 reviews) is :
+
+[[*Amazon - Echo Plus w/ Built-In Hub - Silver*]{.ul}](https://www.amazon.com/-/es/ZE39KL/dp/B06XB29FPF)*.*
+
+Compared to another product with nearly 900 reviews, this was chosen to ease pre-processing. Some manual processing was required, which would have been very difficult to implement with 900 reviews.
+
+The following files were created, edited and made use of, during analysis. The use of each file will be understood later.
+
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Name of File**  | **Type** | **Description**                                                                                                                                                                                             |
++===================+==========+=============================================================================================================================================================================================================+
+| 5000 REVIEWS      | csv      | Original file. Contains all 5000 reviews with other unnecessary info like id-number, manufacturer, date of review, etc.                                                                                     |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Reviews           | csv      | Has all 5000 reviews with only relevant info (name of product, reviews and the reviews.doRecommend\* column)                                                                                                |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Reviews2          | csv      | Has all the reviews associated with the chosen product : *Amazon - Echo Plus w/ Built-In Hub - Silver* and the reviews.doRecommend column (there are 590 reviews)                                           |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Reviews2 - Copy   | csv      | Contains only the 590 reviews of *Amazon - Echo Plus w/ Built-In Hub - Silver*                                                                                                                              |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Reviews2 - Copy_1 | csv      | Reviews2 - Copy was edited such that there are only two cells. One containing the product name. The other contains all reviews combined as a paragraph. This is saved as Reviews2 - Copy_1.csv              |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| new               | xlsx     | Any and all types of symbols are removed. The words from the 590 reviews are saved such that nearly 15 words make up a single cell in the Excel sheet                                                       |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| data_scr          | csv      | Each line is assigned a score of 0 or 1. If the review is positive, that cell is assigned a score of 1. If the review is negative the corresponding cell is assigned a score of 0. (This was done manually) |
++-------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+: Description of the files used during analysis
+
+*\* reviews.doRecommend is a column that indicates whether the a review recommends the product or not. Each review is assigned either 'TRUE' or 'FALSE', depending on whether the review is positive or negative respectively.*
+
+\newpage
+
+## Pre-processing
+
+The first step is to load the required packages.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+packages <- c("tidyverse","caret","data.table","dslabs","dplyr","stringr","tidyr","kableExtra","knitr","knitLatex",
+              "readxl","readr","tm","wordcloud","tidytext","e1071","gmodels","reshape2","RTextTools" ,"crosstable" ,
+              "SnowballC","RColorBrewer")
+
+lapply(packages, FUN = function(X) {
+  do.call("require", list(X)) 
+})
+```
+
+The working directory must be the same as the location of the **5000 REVIEWS.csv** file. If not, when asked to import it, the console window would throw an error, since it would be unable to access the file.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# set working directory
+setwd("C:/Users/MAG/Documents/CYO")
+```
+
+Now we can import it.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dat <- read_csv("5000 REVIEWS.csv")
+```
+
+The raw data looks like this :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+head(dat)
+```
+
+The output of pre-processing is saved as a different file, since we want to retain the original file.
+
+```{r}
+new_dat <- select(dat, -c(id, asins, categories, dateAdded, dateUpdated, brand,
+                          imageURLs, keys, manufacturer, manufacturerNumber,
+                          reviews.date, reviews.dateAdded, reviews.dateSeen,
+                          reviews.id, reviews.numHelpful, reviews.rating,
+                          reviews.sourceURLs, reviews.username, sourceURLs,
+                          primaryCategories))
+
+write.csv(new_dat, file = "Reviews.csv")
+```
+
+It looks like this :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+head(new_dat)
+```
+
+Next we create Reviews2 - Copy.csv .
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dat_final <- new_dat %>% filter(name == "Amazon - Echo Plus w/ Built-In Hub - Silver")
+
+# extracting the reviews
+para <- dat_final %>% group_by(name, reviews.text) %>% 
+  summarise_all(funs(trimws(paste(., collapse = ''))))
+
+para1 <- para %>% select(reviews.text)
+
+# save it as a file
+write.csv(para1, file = "Reviews2 - Copy.csv")
+```
+
+In our first model, we follow the Lexicon based approach. It requires all the words in a 'Tokenized' format. Tokenization is the **process of splitting a string into a list of tokens.** That is, each word in a sentence is saved as an individual object in a list. Each word is called a *token.* The output is a list containing two columns - the first is just an index. The second contains a single word.
+
+It can be understood by looking at the output of the code below :
+
+First we create a vector with all 590 reviews. The tokens will be derived from this vector.
+
+Showing the code that creates the text will make the report appear very cluttered. Hence the output alone is shown below. (To get an idea, when pasting the text in MS Word, it occupies nearly 7 pages.)
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+text <- c("A fun little device on the cutting edge of consumer artificial intelligence Speaker sounds-",
+          "pretty good Alexa does have some problems understanding how I ask questions a fair -",
+          "amount of the time A great value and I love it sounds great and works A must have Everyone-", 
+          "should get one A perfect gift for someone who has everything and a busy schedule A wonderful-",
+          "use of creativity and design where installation was a breeze and use was pure enjoyment Added-",
+          "Alexa hub and expanded the lighting capabilities Easy setup and it works like a charm Looking-",
+          "for more devices to add to the mix Added another echo to the family This one came with a free-",
+          "Philips HUE bulb on black friday which was great Alexa a great product the light too They are-",
+          "working fine Alexa Exceed expectations in it ability to control Alexa in itself needs lots of-",
+          "improvement but with philips hue and smart plugs you can have a lot of fun settings Alexa Is-",
+          "amazin I love the features their great Just love it Alexa is amazing and the Phillips bulb-",
+          "works seamlessly with it Alexa is awesome to have at home makes things fun and easy Alexa is-",
+          "easily confused and fun to mess with but also informative when we are being serious She-",
+          "disappoints when she loses connection with the wifi but its not often We have six different-",
+          "Alexa products and after a few hiccups all are working well Impressed Alexa is fun to play-",
+          "with for the whole family and it fills the house with music when not telling us a joke Alexa-",
+          "is the greatest device to have around the house She basically runs my house for me Alexa items-",
+          "are easy to use and set up Works easily with the smart plug and bulb Alexa makes my life easy-",
+          "by turning my lights on and off playing my favorite music and so much more It really can -",
+          "control anything Alexa really amazes me She learns new skills everyday Alexa ricks the plus is-",
+          "the best ever buy it you will love it Alexa rocks The Echo Plus is super easy to set up I works-",
+          "great Love everything about it Adding more devices Alexa turns on the lights and when I say Alexa-",
+          "good night she turns them off Love her Alexa usually works well but it has turned on things when I-",
+          "did not tell it to Alexa walks you through every step which I found helpful Alexa works pretty -",
+          "good music sounds good Just exploring all her skills Alexis is the new favorite name Great for the-",
+          "college student Already have the echo and dot Has good sound quality and with the hub feature you -",
+          "can control the hue lights with Alexa which is convenient when walking in the house with a bunch-",
+          "of groceries Amazon and Philips Hue work great together very easy setup The only drawback is -",
+          "using these bulbs on a non Philips dimmer switch The bulbs flicker a bit even when its set to -",
+          "full on and practical easy to use just the start of my IOT home As a newbie in smart home -",
+          "technology I was attracted to the Echo Plus because of the builtin Zigbee hub which means it -",
+          "can connect directly to products like the Philips Hue line of smart bulbs without the need for -",
+          "a separate smart hub Combine that with the power of Alexa voice commands and I was able to get -",
+          "my smart home up and running in a matter of minutes As advertised Easy set up and integration -",
+          "Havent tried to use the hub yet but it is limited in the number of products it works with -",
+          "compared to Samsung Smartthing or Wink two As I made my home a smart home I know I know I made a-",
+          "smart choice with Amazon Echo and Philips light bulbs Im looking forward to adding more smart -",
+          "gadgets to my collection Asking trivia questions of Alexa is a hoot but being able to turn off -",
+          "the ceiling fan from bed is golden Awesome love them had to buy two more for the family Awesome -",
+          "product and cool design and a great color I would recommend to a friend awesome product my wife -",
+          "and I love it makes home automation simple Best Buy associate explained product very well Easy -",
+          "to use Bought two as Cristmas presents for my nephews Both ages had them up and running within -",
+          "minutes Had fun asking questions and adjusting the Philips light bulb to different brightness -",
+          "levels All in all it was a hit Bought four devices for my kids they report its simple to start-",
+          "up easy to use and fun Bought an echo plus and it has been better than I expected Primarily use -",
+          "it for music in the LR but we are starting to use it for other functions such as the weather -",
+          "and playing jeopardy Bought as a Christmas gift Works good with no problems Bought eh Echo Plus -",
+          "on a whim it was on sale and I figured why not I am really enjoying it Apart form the basic -",
+          "news and weather reporting I enjoy my morning trivia I also use the music from Amazon a lot Its-", 
+          "been nice having a  holiday  station at my disposal The Echo Plus is easy to set up and use and -",
+          "definitely has a lot of features many of which I am still learning Bought for a family memeber-",
+          "and he was so happy with the game Bought for mother she loves it Good price in stock and an easy-",
+          "purchase Bought for my husband for Christmas We keep it in our kitchen and mainly just use it -",
+          "for music But our kids love that they can tell Alexa to play a song they like and it plays -",
+          "Bought one for Living Room and the other for the bedroom Home wifi needs to be boosted but -",
+          "Alexa would connect through out which caused complications along with Bluetooth speakers Once -",
+          "straightened out works great Bought the Amazon Echo Plus Philips Hue Bulb Black for my kitchen -",
+          "it is awesome also came with free smart bulb bought this as a present for the wife but as I -",
+          "relaxed for the holiday requested six hours of different song play The wife enjoyed the music -",
+          "as the music emanated through the open areas of our house The wife received information on -",
+          "measures for recipes weather updates etc this will be one of those classic gifts Bought this-",
+          "Echo for my wife She loves how just by speaking she can listen to any type of music It sounds -",
+          "pretty good too Bought this for my mom that is electronically challenged and she loves it Makes -",
+          "her feel like she is a tech wiz Makes me feel better about her ability to turn lights on and -",
+          "off as she comes and goes More importantly she is in her and Iives alone she can make a phone-",
+          "call using Alexa from anywhere she has an echo I bought her three to cover her whole house -",
+          "This means if she falls down and cant get to her phone she can dial me with her voice a-",
+          "must have Bought this for my parents home and its awesome The quality of the sound is -",
+          "amazing Its also helpful to get quick questions answered when they are running around or -",
+          "out of the house I need to now purchase one for my own apartment Also great when hosting-",
+          "guests Bought this for my parents to use with their Amazon prime account Sure they will -",
+          "love it Bought this for my son and one for my husband and me So easy to set up Very helpful-",
+          "Doesn ttake up a lot of space Bought this for our son for Christmas He uses it in his room-",
+          "and loves it Alexa also wakes him up for school in the morning Builtin hub only lets your -",
+          "control Philips Hue with your voice You still need the Philips Hue hub to be able to use -",
+          "the Hue app I ended up buying the Hue hub as well Has better speaker than the regular Echo -",
+          "Can not ell you the price of merchandise when asked Christmas gift for my son and my-",
+          "husband Can twait to hook it up Decent sounding music device easy to connect and use the-", 
+          "app Getting custom routines set up with smart home vivint hue etc takes some trial and -",
+          "error figuring out commands Would buy again Decided to go for the model just below this -",
+          "one I didnt need the integrated  hub  features Phillips Hue does require this but I -",
+          "decided to stick with my current Insteon hub Definitely recommend to anyone that wants a-",
+          "exciting product Definitely worth the money The sound is awesome Easy hook up great for -",
+          "lights and my Sony tv I use all the time Easy set up and very user friendly for my children-",
+          "Easy setup They are adding new commands every week it seems Still has some work till it is-",
+          "fully functional Easy to set up and pair other compatible items by enabling skills through-",
+          "the Amazon app Ive been to best buy twice for information and how to questions and all -",
+          "seems to be going well Its only been a week and still have a lot to learn about Elexas -",
+          "capabilities Easy to set up easy to use apps are awesome and sounds great Easy to set up -",
+          "Performs well Nice Product For The Money Easy to set up We really enjoy getting real time -",
+          "local weather It translates Spanish very efficiently We also enjoy the music we can easily-",
+          "select but would appreciate a higher quality sound Linking the Echo to lighting is a snap -",
+          "Highly recommended Easy to use no Complains at all Added all the smart plugs to the skills-",
+          "and works perfect Easy to use Should have bought this a long time ago Echo is nice but it-",
+          "could be better allowing you to connect to anything that is on your WIFI network without-",
+          "having to buy several different hubs Echo Plus has everything the old Echo had plus better -",
+          "sound and builtin capability for Smart Home addons like Hue bulbs and Smart Things plugs-",
+          "without needing a Hue hub or ST hub Love it Echo plus is able to play music and response -",
+          "whatever answer by itself It also equip with bluetooth so I can pair to another more powerful-", 
+          "speaker Its so convenient to ask request without touch anything The response time is acceptable-",
+          "but you need to speak out your question right after calling Alex or it wont wait Echo Plus is -",
+          "everything I expected and more Plus easy to set up Echo plus is great for home use to ask -",
+          "questions and turn the lights on when you away ECHO PLUS OFFERS SO MUCH MORE FOR THE SMART HOME-", 
+          "HOWEVER I HAVE HAD THE DOT FOR A LONG TIME AND YESTERDAY I BOUGHT 5 ECHO DOTS FOR MY CHILDREN-",
+          "GREAT PRODUCT Echo plus seems to work as they say I have it running two lights so far Plan on -",
+          "setting up seven more Nice product Eco plus is an amazing product it integrates with most of -",
+          "the products U can set the music reminders buy products what not definitely a worthy purchase -",
+          "Enjoying using Alexa and love the smart home features Excellent combination and easy to install -",
+          "and setup Excellent item above and beyond my expectations Excellent product Turns on and off -",
+          "supported devices by asking it Live walking into a room and asking Alexa to turn on a light -",
+          "Poof its done Or locking and unlocking the front door Arming and disarming my security system -",
+          "If youre looking to turn your house into a smarthome I strongly recommend the Amazon Echo Plus-",
+          "Exchanged the google Google home for this model Fun for the kids Finding new uses for it every -",
+          "day Had a problem when best buy forgot to include the free light bulb Extra features don treally -",
+          "seem worth it I would just buy the basic one instead First time user of the Alexa plus Using it -",
+          "more and more every day Love it Friend received Amazon Echo as gift & is enjoying it I researched -",
+          "decided on Echo Plus as I wanted capability to use to control home lighting Absolutely love this -",
+          "product It controls lights in several rooms as well as outdoor lighting Other features weather news -",
+          "briefs traffic are fun but the lighting control did it for me From her jokes rapping and everyday-",
+          "new fact Alexa is awesome Its super easy to pull out your phone to check the weather but i honestly -",
+          "never did and would always be surprised when i walked outside with whatever it is that day But-",
+          "every morning i ask alexa whats the weather and she gives me an in depth review for that day and -",
+          "the rest of the week There are tons of skills for Alexa most useful some random But shes a must -",
+          "try Also plus about the echo plus is if you want to start a smart home you dont need a hub like -",
+          "the other echo pieces You can just buy some compatible smart bulbs Fun gadget Plays songs various -",
+          "entertainment still learning all it can do Fun item and helpful to do things around the home Gave -",
+          "it as a gift to provide a sense of safety and security for someone living in the country Turning-",
+          "the lights on before entering the house is a big deal when you live alone Good product and wasy to-",
+          "set up Works well with smart lights Good stereo sound but will not control some devices without-",
+          "the use of an external hub Got it as a Christmas gift and I love it I would recommend this product-",
+          "Got one for my daughter last year and she loves it Got this as a present for my fiance for Christmas-",
+          "will update Got this for my Dad for Christmas Awesome gift he was super excited Got this model -",
+          "only because of the sale price and the built in hub that controls my hue strip lights And I did nnot -",
+          "twant to say google all the time Sounds like baby talk to me Great addition to all the other -",
+          "electronics in our home Great and easy even for someone that is not tech savvy Great and fun -",
+          "almost like having someone in the room with you Great Christmas gift The hubby loved it Just -",
+          "read the manual before setting up Great device but I noticed based on the WiFi connection -",
+          "that Alexa can react slower at times Especially when asking the device to turn off bulbs-",
+          "or any smart devices Great device Good speaker very solid feeling Microphones listen well-",
+          "Great Echo Friend really liked it It really does what he wants it to do and he connected -",
+          "his lights to the device Everything works well Great entertainment when friends are over -",
+          "The knowledge and jokes are tons of fun great for the elderly makes life a lot easier for -",
+          "everyone Great gifts I have the Alexa dot in each room now this is better with the speaker-",
+          "base ask Alexa to play music find me recipes read the news Got this & few other dot-",
+          "devices to give for Xmas Great improved sound and built in smart hub is so useful Great-", 
+          "item and easy to use Very helpful and entertaining Great item for controling your lights -",
+          "in my home even when Im away Great item we love our Echo If only she could mow the yard-",
+          "for the kids Great little speaker I use it every day and I have it about for three days-",
+          "already GREAT PRICE FOR HOLIDAYS COMBO WORKS WELL NO NEED FOR EXTERNAL HUB Great price -",
+          "large selection Plenty to choose from Great product easy to use and would recommend to -",
+          "anyone Great product answers all your questions and controls compatible devices Great -",
+          "product easier set up than anticipated Actually bought for my Mother she loves it Great -",
+          "product Didnt realize its compatible with different items Great product I use it everyday -",
+          "Its a great way to automate your home Great product Loving alexa Was so happy with it that-",
+          "know its a big part of all that i do Great product Works as advertised and fun to use -",
+          "Great product Works well and is even easy for kids to use Great purchase We bought this -",
+          "to make it easier to turn off lights etc Its perfect for connecting the whole house great -",
+          "sound easy to use wife love it connect with wifi and all my phones Great sound and -",
+          "function Alexa The color and style of the silver plus looks great with our newly finished-",
+          "basement Great sound and voice recognition easy to set up and fun to use Great sound for -",
+          "the money Easy to set up also have a dot that I like Great sound quality Easy to set up-",
+          "Easy to use Looks good too great sound Love the music and the electrical devices you can-",
+          "work with it Great way to introduce family and friends to A I Technology Had the Echo Plus-",
+          "over a week and this thing is amazing Great sound and easy to move around A little tricky -",
+          "with the set up but works great Hard to review as I purchased for my son as a present -",
+          "Has built in smart hub unlike other echos Works with other smart home devices with no -",
+          "additional purchases Have first gen Echo and Dot and a second gen Dot Wanted this over-",
+          "regular Echo because I prefer the look and better speakers Have just started using Alexa-",
+          "and am looking forward to all the other things that are available to use with the unit-",
+          "Have yet to explore all the aspects Enjoy using it daily Having a great experience using-",
+          "the Alexa Echo plus product having an assistant like Echo makes life so much easier -",
+          "Having fun with all the things we can learn from Alexa It is almost like having another-", 
+          "person in the house HUB is almost useless Ended up using spare Philips HUB The HUB built-",
+          "in would only discover two out of twelve bulbs three days of trying HUE bridge twelve out -",
+          "of twelve first try I am not a techie but after days of trying to hook up I gave up I -",
+          "dont know if it was the Echo Plus or my carrier ATT Uverse causing the issue but it would-", 
+          "NOT connect So back to the store it went Even with checking out blogs on the internet for -",
+          "assistance none of it worked Ive had an Amazon Echo and Dot for over a year now I really -",
+          "wanted to develop the Smart Device usage around my house and when the upgraded Echo i -",
+          "just had to have it It is a great device I use the drop in feature to communicate with -",
+          "others in the house especially when they are upstairs without having to yell The smart -",
+          "hub is amazing Attaching to smart devices is much more seamless than with the first -",
+          "gen echo Just got it so time will tell but the second gen Echo devices are worth it I -",
+          "absolutely love Alexa This device is loud easy to install and does exactly what I tell her-",
+          "to do I absolutely love this product It does so many things not the least of which is-",
+          "music Ask it anything and it will answer.The Dot worked fine so I returned the full-",
+          "featured Echo Plus I bought this for controlling most of my Smart device-",
+          "I bought this for my fourteen year old daughter and she loves it I bought this for my brother -",
+          "and his wife They love it Not only does it control their Nest thermostat it works with their-",
+          "expanding environment of Philips Hue bulbs I bought this for my finance i bought it for Christmas-",
+          "he left bed it I bought this for my mom and dad they loved it Thank you I bought this for -",
+          "my Mom for Christmas and ended up she got me one too Great for everyone speaker sounds great easy-",
+          "to set up and my Mom ended up getting the dot so she could have her light turned on from downstairs-",
+          "and then tell Alexa to turn it off while in bed No regrets on this one I bought this for my moms-",
+          "birthday and she loves it I bought this for my wife and absolutely loves it Alexa is so smart and -",
+          "helps my wife with everything Like a personal assistant I bought this for myself and another one for-",
+          "a gift you must have WiFi to use as well as a smart phone I brought the Echo Plus for the louder sound quality-" ,
+          "quality I already have an Echo Dot which I use in my bedroom to control my lights and heater via a Wemo Smart-" ,
+          "Switch I brought the Echo Plus which I use in my family room for music and to control my smart devices I didnt-" , 
+          "know what I was missing out on until I got an Echo Plus I enjoy Alexa she reminds me of appointment and alerts-" ,
+          "me when my packages arrive I enjoy my new smart speaker It is a good device that I can get my pandora radio on -" ,
+          "it especially in the app Learning what the device offers for smart home besides that It is good speaker to work -" ,
+          "with different apps I enjoy the amazon Alexa It is an lot of fun It will be more helpful once I have completely -" ,
+          "set up I enjoy the premium sound with this Amazon Echo Plus speaker Of course it also connects to Alexa so I can -" ,
+          "do everything from making calls to listening to music and finding recipes for cooking meals is compatible with -" ,
+          "smart home technology for handsfree control of lighting and other functions I like the Amazon Echo Plus speaker -" ,
+          "because it adapts to my speech patterns I enjoyed and I bought an echo too To make all my family take the pleasure-" ,
+          "of it I gave as a gift to my kids for Christmas they are enjoying Alexa I gave the Echo five stars but I like -" ,
+          "Amazon products and ultimately the product is good however I use Cree smart light bulbs in my house and bought -" ,
+          "this Echo for the built in Hub to try and eliminate the extra hub space in my house but the built in hub of the -" ,
+          "Echo Plus isn tcompatible at this time with Cree light bulbs so I had to return it and wait for now and stick -" ,
+          "with my regular Echo and Echo Dots I got this for my husband He likes it and the setup is easy I had three dots -" ,
+          "and decided to get the echo plus Great product so far Controls my hue lights Grandkids love asking it questions -" ,
+          "I had my doubts when I first purchased it But after just a day I had synced it with my thermostat lights TV Bose -" ,
+          "sound system and many more Amazing product couldn tbe happier I have an Amazon Prime account so I started -" ,
+          "downloading apps and playing all kinds of music on this I also can control my Hue hub you need one for certain-" , 
+          "timers and things and Wemo plus outlets for my non wifi lights and LEDs in the kitchen cabinets I have an Echo -" ,
+          "that I bought from Best Buy several months ago So when it came to buying one for my son & his family for Christmas-" ,
+          "I knew where to come Its an excellent information hub I have an original Gen one Echo that has been relocated to-" ,
+          "My Bedroom by simply unplugging and Plugging back in Now that I have the Gen two Echo Plus in my Living Room and -" ,
+          "set up to work seamlessly with my Gen one I could not be happier Along with the built in Hue it makes it that-" ,
+          "much better Everything works just like I want and the sound on both devices are perfect for me I have been -" ,
+          "contemplating purchasing an Echo product for some time now I finally did it and I am so pleased I did It was -" ,
+          "extremely easy to set up I add my lights to the process and now it is so easy to turn lights on before I get -" ,
+          "to the room For me I know this will be the tip of the iceberg I will now start looking at what else I can add -" ,
+          "to the Echo Love the product Great Buy I have been greatly impressed with the Alexa A friend loves calling me -" ,
+          "and asking her Alexa questions We share alot of laughs just discovering all the things she can do So I just had-" ,
+          "to purchase an Alexa for myself Im just beginning set my Alexa up I hope its easy because Im not tech salve -" ,
+          "Ive got to go and get started with the setup I have both a first gen Echo and now the new Echo Plus I am-" ,
+          "impressed with the sound quality improvement especially the bass Dont get me wrong its no Bose system but -" ,
+          "it sounds great for every day use I have enjoyed learning about home automation using Echo plus and consumers-" ,
+          "need to know that this comes with having to buy additional equipment to get the most out of Alexa I have had -" ,
+          "the competitive products and nothing compares I have had this for around a month and i love it It makes it -" ,
+          "simple to set timers and control my lights I have no idea how my family ever lived without these products-" ,
+          "Since purchasing the Alexa Hub and Hue bulb weve purchased Echo Dots for our kitchen and sons room We absolutely-" ,
+          "love the convenience of the bulbs and Alexa is a life saver on so many levels I have not had a chance to use -" ,
+          "the HUB function on this device but it was easy to set up and get running still learning how to make it work-" ,
+          "with the other echo devices but overall it operates as advertised i have really enjoyed learning about the-" ,
+          "product and its many uses i thought initially music but now to get weather updates news receipies sports scores-" ,
+          "and ordering kitchen supplies i have really enjoyed my new echo plus i enjoy music every morning with the news -" ,
+          "I have several Amazon Echos throughout my house Home automation is great and these work with verything that I -" ,
+          "have I have several home automation devices and the Echo Plus controls all of them I was so happy with automation-" ,
+          "I bought an Echo Dot and Echo Tap I have the Echo plus and i love it the speakers sounds loud and clear I have -" ,
+          "the original Echo and just purchase the Echo Plus Better speakers and can act as a hub for the Philips Hue Bulbs-" ,
+          "without having to purchase another hub Very satisfied with its performance I have two dots and this and the -" ,
+          "functionality between them is awesome I can twait to see how it improves through time Great quality speaker and-" ,
+          "build I know this makes us lazy But comes in handy when your hands are tied up with groceries or holding a baby-" ,
+          "Love that my kids ask her questions I like being able to ask about the weather set an alarm on my phone or create-" ,
+          "a shopping list all by just asking Elexia I like being able to turn on lights music and the thermostat in our -" ,
+          "home I like it for controlling my lights I like that we can play anyones music playlist I like the looks of the -" ,
+          "Echo Plus and the sound from the speakers is something I didn texpect to be as nice as it is Im using it to tune-" ,
+          "into my favorite radio station answer any question I have to look up on the internet and assist me with lighting-" ,
+          "I am considering another for a different room I like this smart machine and will recommend to my friends I looked-" ,
+          "at Google Home And the Echo I went with the Echo after I spoke to a Best Buy employee They helped me sort out the-" ,
+          "pros and cons I do love all the skills that are possible Its like another person in my apt sometimes I live alone-" ,
+          "the Echo adjusts my lights and plays my Pandora Im pretty much loving it I love Alexa although sometimes she has -" ,
+          "a hard time understanding so I find myself repeating commands such as Alexa turn off lights in bedroom Overall -" ,
+          "shes amazing and she tells jokes and very up to date with current events I LOVE Alexa and my Echo device and -" ,
+          "Smart Bulb so much I bought four more Echos and eight more bulbs with more to come soon I love Alexa Great sound-" ,
+          "unlimited music used the bulb and synchronized it Simple to use love Alexa Has a pretty good speaker for -" ,
+          "listening toMusic and helps with my shopping lists I love Alexa She has become my best friend Thanks I love all-" ,
+          "of the things you can do with the Echo I am still learning everything I can do and look forward to more content -" ,
+          "going forward I love amazon products easy to use and install I recommend them hundred very good sound and above -" ,
+          "all price I love being able to turn my lights on or off by voice It makes life a lot easier I am looking forward-" ,
+          "to finish making my home a smart home by buying other products I love being able to use Alexa She is an amazing -" ,
+          "AI Until the robots rebel against the human kind I think its worth it I love having Alexa in my home Alexa has -" ,
+          "helped from recipes to relaxing sleep sounds all night I love how Alexa can control almost all smart things -" ,
+          "and help control lights and power on and off devices to help us get ready for the day The music is connected -" ,
+          "directly to Amazon Prime Music and I love how the sound is clear and crisp You can call out to Alexa from far-" ,
+          "away and shell add items to your shopping list and the Alexa app is so simple to view the lists and control your-" ,
+          "smart things I love it the sound is great I use it everyday for my dogs to listen to when I am at work I love my -" ,
+          "amazon echo plus as bad as it sounds I don thave to get out of bed to turn the lights off my fans on or off and -" ,
+          "even my tv We love alexa I love my Amazon Echo Alexa is compatible with all of my technology and super easy to -" ,
+          "use My favorite is the ease of making a grocery list and having it in the app instead of forgetting my list at -" ,
+          "home I love my Echo Plus The hub makes it easy to add devices to my Smarthome and Alexa is a great addition I -" ,
+          "love my echo so easy to hook up and great sound quality I love my Echo so much I have my lights and front door-" ,
+          "deadbolt hooked up to it I play music from it all the time and ask Alexa about the traffic and weather I would-" ,
+          "recommend the Echo to everyone I love our Amazon echo plus My boyfriend says this was the best present for -" ,
+          "Christmas daily I love that I have the ability to catch up on news and have this crazy thing turn on and off my-" ,
+          "lights Love it I love the Alexa It has encouraged me to automate my home Now I have lighting that comes on when-" ,
+          "I ask My heat is controlled wherever I am and its fun asking her Alexa questions I love this product and it was-" ,
+          "one of my Best Buys from best buy I love this product and plan to expand my Alexa and Echo network I love this-" ,
+          "product just wish it was as smart as the Google home I love this product would really recommend to any one I love -" ,
+          "this product I love everything about it I love this Has great sound I thought i bought in silver THe packaging was-" ,
+          "a little deceptive But Im loving it Wanting to get a second one I loved my echo so much I bought my sister one I-" ,
+          "can now turn on my lights when I get home just by asking Alexa I m so happy to get this amazon echo plus Great to-" ,
+          "have it I mainly bought the Echo plus for my kids but Im using it more than they do Excellent product I need to-" ,
+          "buy all the additional parts but its great I never thought that buying this product was such a great step up-" ,
+          "Really makes watching a movie and turning on the TV so easy really works well with my harmony hub Love the way I-" ,
+          "can control all the lights Looking forward to all the add ons I can purchase I originally purchased this to use -" ,
+          "as a Bluetooth speaker for my wifes music but soon realized that we would use this much more than we thought Ya-" ,
+          "turning on and off lights is good and being able to dim with the included bulb is pretty great but there are-" ,
+          "hundreds of smart home type of apps that work with this including my Sony Google TV and more show up regularly-" ,
+          "Makes it almost too easy to be lazy I purchase one for my children and us is a great way to stay connected and -" ,
+          "smart to have it at home I purchase the Echo Plus as a Christmas gift but set it up early so that it could be -" ,
+          "used right out of the box I was impressed how easy the setup was Ill find out later how it sounds and works I -" ,
+          "purchase this at the store and I was not given any bulb till I decide to do review I purchased it to control-" ,
+          "my lights & introduce myself to Alexa and AI but I find myself using it for all sorts of things and enjoy using -" ,
+          "it I can now control my front door Arlo camera by asking Alexa to show the live feed in to my TV and get my-" ,
+          "Robots vacuum cleaner to start work plus listen to the latest weather conditions and do my normal google search-" , 
+          "via Alexa I am seriously hooked in to my Alexa -")
+```
+
+Before Tokenizing, we will convert it into a tibble.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+text_df <- tibble(text = text)
+```
+
+It looks like this :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+head(text_df)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Tokensizing
+text_df <- text_df %>%
+  unnest_tokens(word, text)
+```
+
+Here's what tokens look like :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+head(text_df)
+```
+
+Now we can implement the first model.
+
+\newpage
+
+## Model 1
+
+## Lexicon based approach {#model1}
+
+A lexicon is the vocabulary of a language or branch of knowledge. In order to build our project on sentiment analysis, we will make use of the `tidytext` package that comprises of sentiment lexicons that are present in the dataset `sentiments`.
+
+These three lexicons make use of **unigrams**. A unigram is a one-word sentence. These words are derived from textual data (in our case, the object `text`). Each word the assigned a score based on the sentiment that it denotes.
+
+In general, there are three general purpose lexicons :
+
+1.  **AFFIN** **:** Words are scored in the range -5 to +5. An increase in negativity corresponds to negative sentiment whereas an increase in positivity corresponds to a positive one.
+
+2.  **Bing :** The bing lexicon model on the other hand, classifies sentiments into a binary category of negative (0) or positive (1).
+
+3.  **Loughran :** This model is used in financial market analysis.
+
+We will make use of the bing lexicons to extract the sentiments out of our data. This is done using the `get_sentiments()` function.
+
+Here is a sample of the data in the `get_sentiments()` function :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+head(get_sentiments("bing"))
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#implement filter() over the words that correspond to positivity 
+positive_senti <- get_sentiments("bing") %>%
+  filter(sentiment == "positive")
+
+# how many positive words and their word count
+text_df %>%
+    semi_join(positive_senti) %>%
+  count(word, sort = TRUE)
+```
+
+We will use `spread()` function to segregate the data into positive and negative sentiments. The `mutate()` function is then used to calculate the total sentiment (difference between positive and negative sentiment.)
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+bing <- get_sentiments("bing")
+text_sentiment <- text_df %>%
+  inner_join(bing) %>%
+  count(sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+A sample of the most common words :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+counting_words <- text_df %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE)
+
+head(counting_words)
+```
+
+We can visualize the sentiment score :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+counting_words %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(y = "Sentiment Score")
+```
+
+Alternately, we can also use a word cloud. For generating word clouds, we use the `wordcloud` package. In this cloud, positive words are green in color and negative words are red in color.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+text_df %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("red", "dark green"),
+                   max.words = 100)
+```
+
+Let us remove objects that we don't need.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+rm(new_dat, dat, para, para1, text)
+```
+
+Now, to check if this product can be recommended to a new buyer, we can calculate the proportion of positive words to negative words.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+sent_pos <- sum(counting_words$sentiment == "positive")
+sent_neg <- sum(counting_words$sentiment == "negative")
+
+prop <- sent_pos/sent_neg
+print(paste("The proportion of positive sentiment to negative sentiment is : ",prop))
+```
+
+Let us check the actual proportion of positive reviews to negative reviews. To do this we can use the `reviews.doRecommend` object in the file.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+rec_pos <- sum(dat_final$reviews.doRecommend == "TRUE")
+rec_neg <- sum(dat_final$reviews.doRecommend == "FALSE")
+prop_act <- round((rec_pos/rec_neg), digits = 2)
+print(paste("The actual proportion of positive to negative sentiment is : ", prop_act))
+```
+
+This model doesn't seem to be very accurate. This can be attributed to the fact that we are heavily reliant on the words having a place in the dictionary.
+
+\newpage
+
+## Model 2
+
+## Naive Bayes Approach {#model2}
+
+Naive Bayes is a Supervised Machine Learning algorithm based on the Bayes Theorem that is used to solve classification problems by following a probabilistic approach. It is based on the idea that the predictor variables in a Machine Learning model are independent of each other. Meaning that the outcome of a model depends on a set of independent variables that have nothing to do with each other. The idea is to take texts that are already classified as "positive" and "negative" and use Bayes' theorem to find the probability of words of unknown texts being positive/negative and sum over the probabilities for both categories to see which one "wins". Put differently, we find how probable positive/negative words are.
+
+### The mathematics behind Bayes Theorem
+
+In general, Conditional probability is defined as the **likelihood of an event or outcome occurring**, based on the occurrence of a previous event or outcome. Conditional probability is calculated by multiplying the probability of the preceding event by the updated probability of the succeeding, or conditional, event.
+
+The equation below represents the conditional probability of $A$, given $B$ :
+
+$$P(A|B) = \frac{P(A\cap B)}{P(B)}$$ Similarly the conditional probability of $B$, given $A$ is :
+
+$$P(B|A) = \frac{P(B\cap A)}{P(A)}$$
+
+Therefore, on combining the two equations we get Bayes Theorem as,
+
+$$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
+
+### **Bayes Theorem for Naive Bayes Algorithm**
+
+The above equation was for a single predictor variable, however, in real-world applications, there are more than one predictor variables and for a classification problem, there is more than one output class.
+
+The classes can be represented as, $C_1, C_2,\dots,C_k$ and the predictor variables can be represented as a vector, $x_1,x_2,\dots,x_n$.
+
+The objective of a Naive Bayes algorithm is to measure the conditional probability of an event with a feature vector $x_1,x_2,\dots,x_n$ belonging to a particular class $C_i$.
+
+$$P(C_i|x_1,x_2,\dots,x_n) = \frac{P(x_1,x_2,\dots,x_n)|C_i \cdot P(C_i)}{P(x_1,x_2,\dots,x_n)} for 1 < i < k$$
+
+\newpage
+
+On computing the above equation, we get,
+
+$$P(x_1,x_2,\dots,x_n|C_i) \cdot P(C_i) 
+= P(x_1,x_2,\dots ,x_n,C_i) $$
+
+$$P(x_1,x_2,\dots ,x_n,C_i) 
+= P(x_1|x_2,\dots,x_n,C_i) \cdot P(x_2,\dots ,x_n, C_i)$$
+
+$$= P(x_1|x_2, \dots, x_n,C_i)\cdot P(x_2|x_3, \dots, x_n,C_i)P(x_3, \dots ,x_n,C_i) 
+= \dots 
+=$$
+
+$$P(x_1|x_2, \dots, x_n,C_i)\cdot P(x_2|x_3, \dots, x_n,C_i)\dots (x_{n-1}|C_i)\cdot P(C_i)$$
+
+However, the conditional probability, i.e., $P(x_j | x_{j+1},\dots ,x_n,C_i)$ sums down to $P(x_j|C_i)$ since each predictor variable is independent in Naive Bayes.
+
+The final equation comes down to :
+
+$$P(C_i|x_1,x_2,\dots,x_n) = (\prod_{j=1}^{j=n}P(x_j|C_i))\cdot \frac{P(C_i)}{P(x_1,x_2,\dots,x_n)} for 1<i<k$$
+
+Here, $P(x_1,x_2,\dots ,x_n)$ is constant for all the classes, we get,
+
+$$P(C_i|x_1,x_2,\dots,x_n) \alpha (\prod_{j=1}^{j=n}P(x_j|C_i))\cdot P(C_i) for 1<i<k$$
+
+\newpage
+
+### **Implementing Naive Bayes Approach :**
+
+We use the `data_scored.csv` file. To implement Naive Bayes Approach, we will make use of the `tm`, `e1071`, `gmodels`, `SnowballC` and `crosstable` packages, among others.
+
+For this, we use the data_scored.csv file. Each review is assigned a score of either 0 or 1 depending on whether is it negative or positive. It has two columns - sentence (the review) and score (its score).
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_raw <- read.csv("C:/Users/MAG/Documents/CYO/data_scr.csv",
+                      header = FALSE, col.names = c("sentence","score"),
+                      stringsAsFactors = FALSE)
+```
+
+Overview of the data frame :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+str(data2_raw)
+```
+
+As we can see, the scores belong to the class `character`. We will convert them into factors.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_raw$score <- factor(data2_raw$score)
+str(data2_raw$score)
+```
+
+We can see the total number of 1s and 0s :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+table(data2_raw$score)
+```
+
+We can see that only 2% of the reviews are negative.
+
+**Transforming the data :**
+
+We must now transform the data to make sure Naive Bayes functions as expected. To do this, we must create a **volatile corpus.** A corpus basically represents a collection of text documents. So a volatile corpus is a corpus that is stored in memory and which would be destroyed when the R object containing it is destroyed.
+
+To create the volatile corpus we use the `tm` package.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_corpus <- VCorpus(VectorSource(data2_raw$sentence))
+```
+
+Let us look at the first message in the corpus :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+as.character(data2_corpus[[2]]) # first sentence
+```
+
+Now, we will pre-process this data, since it is not ready to have a model fitted onto yet.
+
+First we will convert all words to lower case, since they may differ in format.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_corpus_clean <- tm_map(data2_corpus, content_transformer(tolower))
+```
+
+Let's see how to first sentence has changed :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+as.character(data2_corpus_clean[[2]]) # after
+```
+
+Next we will remove any numbers :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# remove numbers
+data2_corpus_clean <- tm_map(data2_corpus_clean, removeNumbers)
+```
+
+Stopwords are words in the data that appear often but serve no purpose. Some examples are 'to', 'and', 'from', 'I', "am', etc. In our data we have some additional stopwords such as 'Alexa', 'Echo' and 'Dot' since they are specific to the product. These are unnecessary and can be removed. This is done like this :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_corpus_clean <- tm_map(data2_corpus_clean, removeWords, 
+                             c(stopwords("english"),"Alexa","Echo","Dot"))
+```
+
+We then remove punctuation.
+
+```{r}
+# remove punctuation
+data2_corpus_clean <- tm_map(data2_corpus_clean, removePunctuation)
+```
+
+**Stemming** is another important process. In this, we remove the suffix and transform them into their root word. We will use the package `SnowballC` along with `tm`.
+
+After that we remove whitespaces.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# stemming operation
+data2_corpus_clean <- tm_map(data2_corpus_clean, stemDocument)
+
+# remove whitespaces
+data2_corpus_clean <- tm_map(data2_corpus_clean, stripWhitespace)
+```
+
+The first sentence now looks like this :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# finally we have 
+as.character(data2_corpus_clean[[2]])
+```
+
+Next we perform Tokenization using the `DocumentTermMatrix` function. A `DocumentTermMatrix` is a mathematical matrix that describes the frequency of terms that occur in a collection of documents. This is a matrix where. each row represents one document. each column represents one term (word)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_dtm <- DocumentTermMatrix(data2_corpus_clean)
+```
+
+We will split the data into train (80%) and test (20%) sets. The test set will be used to evaluate the algorithm. Excluding the column names (sentence and score) we have 590 observations.
+
+80% of 590 is 472 and 20 of 590 is 118. Hence the first 472 observations form the training set and the last 118 observations form the test set.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_dtm_train <- data2_dtm[2:472, ]
+data2_dtm_test <- data2_dtm[473:591, ]
+```
+
+Next we save the vectors that label the rows, in both sets
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_train_labels <- data2_raw[2:472, ]$score
+data2_test_labels <- data2_raw[473:591,]$score
+```
+
+The proportion of 0s in the train and test sets must be roughly equal. Let us check this.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+print(paste("Proportion of 0s in train-set : ",
+            prop.table(table(data2_train_labels))[1]))
+print(paste("Proportion of 0s in test-set : ",
+            prop.table(table(data2_test_labels))[1]))
+```
+
+They are nearly equal. That is, both the train and test sets have roughly 2% of negative reviews.
+
+Generating a word cloud where frequently occurring words are colored blue and less frequent words are colored green :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+wordcloud(data2_corpus_clean, max.words = 290, random.order = TRUE,
+          colors = c("blue", "dark green"))
+```
+
+We can remove words from the matrix that appear less than 5 times and limit our `DocumentTermMatrix` to only include words that appear more than 5 times. Also, since Naive Bayes works with categorical data, we will convert the matrix to "yes" and "no" categorical variables.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_freq_words <- findFreqTerms(data2_dtm_train, 5)
+str(data2_freq_words)
+
+data2_dtm_freq_train <- data2_dtm_train[ , data2_freq_words]
+data2_dtm_freq_test <- data2_dtm_test[ , data2_freq_words]
+
+convert_counts <- function(x) {
+  x <- ifelse(x > 0, "Yes", "No")
+}
+```
+
+Values that are greater than zero are assigned 'yes' and those *not above zero* are assigned 'no'.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_train <- apply(data2_dtm_freq_train, MARGIN = 2, convert_counts)
+data2_test <- apply(data2_dtm_freq_test, MARGIN = 2, convert_counts)
+```
+
+We will now train the model using the `e1071` package :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_classifier <- naiveBayes(data2_train, data2_train_labels)
+```
+
+Predict and evaluate :
+
+*(CrossTable is a function that computes the descriptive statistics on datasets.)*
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+data2_test_pred <- predict(data2_classifier, data2_test)
+CrossTable(data2_test_pred, data2_test_labels, 
+           prop.chisq = FALSE, prop.t = FALSE, dnn = c('predicted', 'actual'))
+```
+
+Because of the nature of the data chosen it so happens that `data2_test_pred` set contains only 1s.
+
+Let's calculate the accuracy of our prediction :
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+error <- 3/119
+accuracy <- 100 - (100*error)
+print(paste("Accuracy of the prediction is : ", round((accuracy), digits = 2)))
+```
+
+The accuracy achieved in this model is very good. This means that the model has correctly classified all the reviews and has concluded that almost of them are positive. Hence we can recommend this item to a customer.
+
+\newpage
+
+# 4 Results
+
+![](C:/Users/MAG/AppData/Local/RStudio/tmp/paste-0A054B14.png)
+
+\newpage
+
+# 5 Conclusion
+
+It is clear that the [[Naive Bayes Approach]{.ul}](#model2) performed better than the [[Lexicon Based Approach]{.ul}](#model1). Choosing a different dataset would lead to different results. A possible downside in choosing this dataset is that the proportion of positive reviews is much larger than the proportion of negative reviews.
+
+**Advantages of the Naive Bayes Approach :**
+
+-   This algorithm works quickly and can save a lot of time.
+
+-   Naive Bayes is suitable for solving multi-class prediction problems.
+
+-   If its assumption of the independence of features holds true, it can perform better than other models and requires much less training data.
+
+-   Naive Bayes is better suited for categorical input variables than numerical variables.
+
+**Disadvantages of the Naive Bayes Approach :**
+
+-   Naive Bayes assumes that all predictors (or features) are independent, rarely happening in real life. This limits the applicability of this algorithm in real-world use cases.
+
+-   This algorithm faces the 'zero-frequency problem' where it assigns zero probability to a categorical variable whose category in the test data set wasn't available in the training dataset ( although this could be overcome by using a smoothing technique).
+
+-   It cannot be applied to numerical variables.
+
+Even so, it makes for a good model when used in sentiment analysis due to its high rate of success, high speed and efficiency.
+
+\newpage
+
+# 6 References
+
+$[1]$ <https://www.kaggle.com/datafiniti/consumer-reviews-of-amazon-products?select=Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products.csv>
+
+$[2]$ <https://towardsdatascience.com/a-hitchhikers-guide-to-sentiment-analysis-using-naive-bayes-classifier-b921c0fb694>
+
+$[3]$ <https://archive.ics.uci.edu/ml/datasets/Sentiment+Labelled+Sentences>
+
+$[4]$ <https://www.upgrad.com/blog/naive-bayes-explained/>
+
+$[5]$ <https://machinelearningmastery.com/types-of-classification-in-machine-learning/>
+
+$[6]$ <https://www.sciencedirect.com/science/article/pii/S2090447914000550>
